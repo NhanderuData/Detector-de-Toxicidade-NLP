@@ -1,22 +1,27 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
+import os
+import pandas as pd
+import sys
+
+# Adicionar o diretório atual ao path para importar text_utils
+sys.path.append(os.path.dirname(__file__))
+from text_utils import clean_text, aplicar_clean_text
 
 # Inicializa a aplicação Flask
 app = Flask(__name__)
-
-# Habilita o CORS para permitir que o frontend acesse a API
 CORS(app)
 
-# --- Carrega o modelo de Machine Learning ---
-# Certifique-se de que o arquivo 'modelo_toxicidade.joblib' está na mesma pasta.
+# Caminho do modelo
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "modelo_toxicidade.joblib")
+
 try:
-    modelo = joblib.load("modelo_toxicidade.joblib")
+    model = joblib.load(MODEL_PATH)
     print("✅ Modelo carregado com sucesso!")
 except Exception as e:
     print(f"⚠️ Erro ao carregar o modelo: {e}")
-    modelo = None
-
+    model = None
 
 # --- Rota principal de predição ---
 @app.route('/predict', methods=['POST'])
@@ -32,18 +37,19 @@ def predict():
         return jsonify({'error': 'No text provided'}), 400
 
     # --- Predição real ---
-    if modelo is not None:
+    if model is not None:
         try:
-            # Faz a previsão usando o modelo carregado
-            pred = modelo.predict([text])[0]
+            # Criar uma Series do pandas para o texto (como esperado pelo modelo)
+            text_series = pd.Series([text])
             
-            # Se for um modelo binário (0 = não tóxico, 1 = tóxico)
+            # Fazer a predição usando o modelo carregado
+            pred = model.predict(text_series)[0]
             is_toxic = bool(pred)
-            
-            # Opcional: probabilidade da predição (se o modelo permitir)
-            if hasattr(modelo.named_steps['lr'], "predict_proba"):
-                proba = modelo.named_steps['lr'].predict_proba([text])[0][1]
-            else:
+
+            # Probabilidade da predição (se disponível)
+            try:
+                proba = model.predict_proba(text_series)[0][1]
+            except:
                 proba = 1.0 if is_toxic else 0.0
 
         except Exception as e:
@@ -58,6 +64,15 @@ def predict():
         'score': round(float(proba), 4)
     })
 
+# --- Rota de teste ---
+@app.route('/test', methods=['GET'])
+def test():
+    """Rota de teste para verificar se o servidor está funcionando."""
+    return jsonify({
+        'status': 'OK',
+        'message': 'Servidor de detecção de toxicidade funcionando!',
+        'model_loaded': model is not None
+    })
 
 # --- Executa o servidor Flask ---
 if __name__ == '__main__':
