@@ -1,0 +1,22 @@
+# Ignorar caches e arquivos temporários do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignorar caches de ferramentas
+.pytest_cache/
+.ipynb_checkpoints/
+.cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Ignorar ambiente virtual (caso use)
+venv/
+env/
+ENV/
+.venv/
+
+# Ignorar arquivos temporários do sistema
+.DS_Store
+Thumbs.db
